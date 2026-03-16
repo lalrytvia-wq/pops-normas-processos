@@ -11,6 +11,10 @@
     <!-- Babel para processar JSX no navegador -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+    <!-- Bibliotecas para geração de PDF em Alta Qualidade -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
     <!-- Import Map para gerir dependências (React, ReactDOM, Lucide) -->
     <script type="importmap">
     {
@@ -56,14 +60,14 @@
         }
     </style>
 </head>
-<body class="bg-slate-100 text-slate-800">
+<body class="bg-slate-100 text-slate-800 overflow-x-hidden">
 
     <div id="root"></div>
 
     <script type="text/babel" data-type="module">
-        import React, { useState } from 'react';
+        import React, { useState, useEffect } from 'react';
         import { createRoot } from 'react-dom/client';
-        import { Clock, Save, FileText, AlertTriangle, Calendar, CheckCircle, Trash2, BarChart2, Activity, UploadCloud, Download, Award, TrendingUp, ChevronDown, ChevronUp, Filter, ArrowLeft, Target, Layers } from 'lucide-react';
+        import { Clock, Save, FileText, AlertTriangle, Calendar, CheckCircle, Trash2, BarChart2, Activity, UploadCloud, Download, Award, TrendingUp, ChevronDown, ChevronUp, Filter, ArrowLeft, Target, Layers, FileDown, Play, X, ChevronLeft, ChevronRight, Maximize2 } from 'lucide-react';
 
         // Estado Inicial do Formulário Adaptado
         const initialFormState = {
@@ -94,16 +98,16 @@
                 id: 1708690000000,
                 projeto: 'Procedimento de Inventário',
                 titulo: 'POP - Inventário Geral do Estoque',
-                dataInicio: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0], // Força pro mês atual para aparecer no filtro padrão
+                dataInicio: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0], 
                 complexidade: 'Alta',
                 areaEnvolvida: 'Logística / Controladoria',
                 politica: 'Sim', manuais: 'Não', fluxograma: 'Sim',
                 pdfUrl: null, pdfName: null,
                 fase1Responsavel: 'João Silva', fase1Departamento: 'Logística', fase1Planejado: 5, fase1Executado: 5,
                 fase2Responsavel: 'Maria Costa', fase2Departamento: 'Processos', fase2Planejado: 7, fase2Executado: 7,
-                fase3Responsavel: 'Carlos Souza', fase3Departamento: 'Qualidade', fase3Planejado: 14, fase3Executado: 16, // Atraso proposital
-                fase4Responsavel: 'Diretoria', fase4Departamento: 'Diretoria', fase4Planejado: 5, fase4Executado: 0, // Não iniciado
-                fase5Responsavel: 'RH', fase5Departamento: 'Treinamento', fase5Planejado: 4, fase5Executado: 0, // Não iniciado
+                fase3Responsavel: 'Carlos Souza', fase3Departamento: 'Qualidade', fase3Planejado: 14, fase3Executado: 16, 
+                fase4Responsavel: 'Diretoria', fase4Departamento: 'Diretoria', fase4Planejado: 5, fase4Executado: 0, 
+                fase5Responsavel: 'RH', fase5Departamento: 'Treinamento', fase5Planejado: 4, fase5Executado: 0, 
                 totalPlanejado: 35,
                 totalExecutado: 28
             },
@@ -117,10 +121,10 @@
                 politica: 'Sim', manuais: 'Sim', fluxograma: 'Sim',
                 pdfUrl: null, pdfName: null,
                 fase1Responsavel: 'Dra. Ana', fase1Departamento: 'Jurídico', fase1Planejado: 3, fase1Executado: 3,
-                fase2Responsavel: 'Lucas', fase2Departamento: 'Processos', fase2Planejado: 5, fase2Executado: 4, // Adiantado
-                fase3Responsavel: 'Fernanda', fase3Departamento: 'Qualidade', fase3Planejado: 10, fase3Executado: 0, // Não iniciado
-                fase4Responsavel: 'Conselho', fase4Departamento: 'Diretoria', fase4Planejado: 3, fase4Executado: 0, // Não iniciado
-                fase5Responsavel: 'Comunicação', fase5Departamento: 'Marketing', fase5Planejado: 2, fase5Executado: 0, // Não iniciado
+                fase2Responsavel: 'Lucas', fase2Departamento: 'Processos', fase2Planejado: 5, fase2Executado: 4, 
+                fase3Responsavel: 'Fernanda', fase3Departamento: 'Qualidade', fase3Planejado: 10, fase3Executado: 0, 
+                fase4Responsavel: 'Conselho', fase4Departamento: 'Diretoria', fase4Planejado: 3, fase4Executado: 0, 
+                fase5Responsavel: 'Comunicação', fase5Departamento: 'Marketing', fase5Planejado: 2, fase5Executado: 0, 
                 totalPlanejado: 23,
                 totalExecutado: 7
             }
@@ -132,6 +136,35 @@
             const [viewMode, setViewMode] = useState('list'); 
             const [filterMonth, setFilterMonth] = useState('todos');
             const [filterYear, setFilterYear] = useState('todos');
+            const [isExporting, setIsExporting] = useState(false);
+
+            // Estado para o Modo Apresentação
+            const [presentationMode, setPresentationMode] = useState(false);
+            const [currentSlide, setCurrentSlide] = useState(0);
+
+            // Lógica de filtro reativa
+            const filteredPops = pops.filter(pop => {
+                const popDate = new Date(pop.dataInicio);
+                const matchMonth = filterMonth === 'todos' || (popDate.getMonth() + 1) === parseInt(filterMonth);
+                const matchYear = filterYear === 'todos' || popDate.getFullYear() === parseInt(filterYear);
+                return matchMonth && matchYear;
+            });
+
+            // Ativar atalhos de teclado para a apresentação
+            useEffect(() => {
+                const handleKeyDown = (e) => {
+                    if (!presentationMode) return;
+                    if (e.key === 'Escape') setPresentationMode(false);
+                    if (e.key === 'ArrowRight' && currentSlide < filteredPops.length) {
+                        setCurrentSlide(prev => prev + 1);
+                    }
+                    if (e.key === 'ArrowLeft' && currentSlide > 0) {
+                        setCurrentSlide(prev => prev - 1);
+                    }
+                };
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, [presentationMode, currentSlide, filteredPops.length]);
 
             const handleChange = (e) => {
                 const { name, value, files } = e.target;
@@ -167,7 +200,84 @@
                 setPops(pops.filter(p => p.id !== id));
             };
 
-            // Cálculo do Percentual de Execução baseado nos pesos fixos (15%, 20%, 40%, 15%, 10%)
+            // Função para Exportar PDF em ALTA FIDELIDADE
+            const handleExportPDF = async () => {
+                setIsExporting(true);
+                const element = document.getElementById('dashboard-export-area');
+                
+                if (!element) {
+                    setIsExporting(false);
+                    return;
+                }
+
+                try {
+                    const style = document.createElement('style');
+                    style.innerHTML = `
+                        .pdf-export-mode, .pdf-export-mode * {
+                            animation: none !important;
+                            transition: none !important;
+                        }
+                        .pdf-export-mode .anim-entry,
+                        .pdf-export-mode .anim-pop,
+                        .pdf-export-mode .animate-fade-in {
+                            opacity: 1 !important;
+                            transform: none !important;
+                        }
+                        .pdf-export-mode {
+                            background-color: #f1f5f9 !important;
+                            padding: 30px !important;
+                            border-radius: 0 !important;
+                        }
+                    `;
+                    document.head.appendChild(style);
+                    element.classList.add('pdf-export-mode');
+
+                    await new Promise(resolve => setTimeout(resolve, 300));
+
+                    const canvas = await window.html2canvas(element, {
+                        scale: 2, 
+                        useCORS: true,
+                        logging: false,
+                        backgroundColor: '#f1f5f9', 
+                        windowWidth: 1200 
+                    });
+
+                    element.classList.remove('pdf-export-mode');
+                    document.head.removeChild(style);
+
+                    const imgData = canvas.toDataURL('image/png'); 
+                    const pdf = new window.jspdf.jsPDF('p', 'mm', 'a4');
+                    
+                    const pdfWidth = pdf.internal.pageSize.getWidth();
+                    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                    
+                    let heightLeft = pdfHeight;
+                    let position = 0;
+                    const pageHeight = pdf.internal.pageSize.getHeight();
+
+                    pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+                    heightLeft -= pageHeight;
+
+                    while (heightLeft > 0) {
+                        position = heightLeft - pdfHeight;
+                        pdf.addPage();
+                        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+                        heightLeft -= pageHeight;
+                    }
+
+                    const fileName = filterMonth === 'todos' 
+                        ? `Relatorio_POPs_Geral.pdf` 
+                        : `Relatorio_POPs_${filterMonth}_${filterYear}.pdf`;
+                        
+                    pdf.save(fileName);
+                } catch (error) {
+                    console.error("Erro ao gerar PDF:", error);
+                    alert("Ocorreu um erro ao gerar o PDF. Por favor, tente novamente.");
+                } finally {
+                    setIsExporting(false);
+                }
+            };
+
             const calcularPercentualGeral = (pop) => {
                 const weights = [15, 20, 40, 15, 10];
                 const phases = [
@@ -179,9 +289,9 @@
                 ];
                 let totalProgress = 0;
                 phases.forEach((p, idx) => {
-                    if (p.plan === 0 && p.exec > 0) totalProgress += weights[idx]; // Cobre edge cases
+                    if (p.plan === 0 && p.exec > 0) totalProgress += weights[idx]; 
                     else if (p.plan > 0) {
-                        const perc = Math.min(1, p.exec / p.plan); // Limita a 100% por fase para o cálculo global
+                        const perc = Math.min(1, p.exec / p.plan); 
                         totalProgress += perc * weights[idx];
                     }
                 });
@@ -219,7 +329,6 @@
                 
                 const rankedDepts = Object.entries(deptDelays).sort((a, b) => b[1] - a[1]).map(([name, count]) => ({ name, count }));
                 
-                // Melhor POP concluído (ou com maior progresso em menor tempo)
                 const completedPops = dataSet.filter(p => parseFloat(calcularPercentualGeral(p)) >= 100);
                 const bestPop = completedPops.length > 0 
                     ? [...completedPops].sort((a, b) => a.totalExecutado - b.totalExecutado)[0]
@@ -228,8 +337,60 @@
                 return { totalPops, onTimePercentage, avgCycleTime, biggestBottleneck, rankedDepts, bestPop };
             };
 
-            const DiagnosticCard = ({ pop }) => {
-                const [isExpanded, setIsExpanded] = useState(false);
+            // Reutiliza o design do resumo para poder ser injetado também no modo apresentação
+            const renderSummaryStats = (stats, isPresentation = false) => {
+                if (!stats) return null;
+                return (
+                    <div className={`bg-red-900 rounded-2xl p-6 text-white shadow-xl shadow-red-900/20 border border-red-800 transition-all ${isPresentation ? '' : 'hover:shadow-2xl'}`}>
+                        <h2 className="text-xl font-bold mb-6 flex items-center gap-2">Resumo do Período</h2>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div className={`bg-white p-4 rounded-xl border-l-4 border-red-800 shadow-sm ${isPresentation ? 'anim-pop delay-100' : 'anim-pop delay-300 transform hover:-translate-y-1 transition-transform duration-300'}`}>
+                                <p className="text-red-900/70 text-xs uppercase font-bold tracking-wider">Total de POPs</p>
+                                <p className="text-3xl font-bold mt-1 text-red-900">{stats.totalPops}</p>
+                            </div>
+                            <div className={`bg-white p-4 rounded-xl border-l-4 border-red-800 shadow-sm ${isPresentation ? 'anim-pop delay-200' : 'anim-pop delay-400 transform hover:-translate-y-1 transition-transform duration-300'}`}>
+                                <p className="text-red-900/70 text-xs uppercase font-bold tracking-wider">% Dentro do Prazo</p>
+                                <p className={`text-3xl font-bold mt-1 ${stats.onTimePercentage < 70 ? 'text-red-600' : 'text-emerald-600'}`}>{stats.onTimePercentage.toFixed(0)}%</p>
+                            </div>
+                            <div className={`bg-white p-4 rounded-xl border-l-4 border-red-800 shadow-sm ${isPresentation ? 'anim-pop delay-300' : 'anim-pop delay-500 transform hover:-translate-y-1 transition-transform duration-300'}`}>
+                                <p className="text-red-900/70 text-xs uppercase font-bold tracking-wider">Ciclo Médio (Dias)</p>
+                                <p className="text-3xl font-bold mt-1 text-red-900">{stats.avgCycleTime.toFixed(1)}</p>
+                            </div>
+                            <div className={`bg-white p-4 rounded-xl border-l-4 border-red-800 shadow-sm ${isPresentation ? 'anim-pop delay-400' : 'anim-pop delay-600 transform hover:-translate-y-1 transition-transform duration-300'}`}>
+                                <p className="text-red-900/70 text-xs uppercase font-bold tracking-wider">Maior Gargalo</p>
+                                <p className="text-lg font-bold mt-2 text-red-600 flex items-center gap-1"><AlertTriangle size={16}/> {stats.biggestBottleneck}</p>
+                            </div>
+                        </div>
+                        
+                        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className={`bg-red-950/50 p-4 rounded-xl border border-red-800/50 ${isPresentation ? 'anim-entry delay-500' : 'anim-entry delay-500 hover:bg-red-950/70 transition-colors'}`}>
+                                <h3 className="text-sm font-bold uppercase text-red-200 mb-3 flex items-center gap-2"><Award size={16}/> Processo Mais Ágil</h3>
+                                {stats.bestPop ? (
+                                    <div>
+                                        <p className="text-lg font-bold">{stats.bestPop.titulo}</p>
+                                        <p className="text-xs text-red-200 mt-1 flex items-center gap-1"><CheckCircle size={12}/> Concluído em <strong className="text-white">{stats.bestPop.totalExecutado}</strong> dias</p>
+                                    </div>
+                                ) : <p className="text-sm text-red-300">Nenhum POP concluído a 100%.</p>}
+                            </div>
+                            <div className={`bg-red-950/50 p-4 rounded-xl border border-red-800/50 ${isPresentation ? 'anim-entry delay-600' : 'anim-entry delay-600 hover:bg-red-950/70 transition-colors'}`}>
+                                <h3 className="text-sm font-bold uppercase text-red-200 mb-3 flex items-center gap-2"><AlertTriangle size={16}/> Top Atrasos por Depto</h3>
+                                {stats.rankedDepts.length > 0 ? (
+                                    <ul className="text-sm space-y-2">
+                                        {stats.rankedDepts.slice(0,3).map((d, i) => (
+                                            <li key={i} className="flex justify-between items-center bg-red-900/30 p-2 rounded-lg">
+                                                <span>{d.name}</span> <span className="font-bold bg-red-600 px-2 py-0.5 rounded text-xs">{d.count} atrasos</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : <p className="text-sm text-red-300">Sem atrasos registrados.</p>}
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            const DiagnosticCard = ({ pop, defaultExpanded = false }) => {
+                const [isExpanded, setIsExpanded] = useState(defaultExpanded);
                 const isDelayed = pop.totalExecutado > pop.totalPlanejado;
                 const delayDays = pop.totalExecutado > pop.totalPlanejado ? pop.totalExecutado - pop.totalPlanejado : 0;
                 const isOverallOnTime = pop.totalExecutado <= pop.totalPlanejado;
@@ -251,7 +412,7 @@
                 let accP = 0; let accE = 0;
                 stages.forEach(s => { accP += s.plan; accE += s.exec; pointsPlan.push(accP); pointsExec.push(accE); });
                 const maxY = Math.max(accP, accE) * 1.1 || 1; 
-                const width = 100; const height = 50; const stepX = width / 5; // 5 fases = divide a largura por 5
+                const width = 100; const height = 50; const stepX = width / 5; 
                 const getPath = (dataPoints) => dataPoints.map((val, idx) => {
                     const x = idx * stepX; const y = height - ((val / maxY) * height);
                     return `${idx === 0 ? 'M' : 'L'} ${x} ${y}`;
@@ -260,8 +421,7 @@
                 const pathExec = getPath(pointsExec);
 
                 return (
-                <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden mb-6 hover:shadow-lg transition-all relative">
-                    {/* Barra de Progresso Superior */}
+                <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden mb-6 hover:shadow-lg transition-all relative" data-html2canvas-ignore-bg>
                     <div className="h-1.5 w-full bg-slate-100 relative">
                         <div className={`absolute top-0 left-0 h-full transition-all duration-1000 ${isDelayed ? 'bg-red-500' : 'bg-emerald-500'}`} style={{width: `${progressoGeral}%`}}></div>
                     </div>
@@ -291,18 +451,18 @@
                                 <span className="flex items-center gap-1">{statusStr.includes('Atraso') ? <AlertTriangle size={14} /> : <CheckCircle size={14} />} {statusStr}</span>
                                 {isDelayed && <span className="text-[9px] opacity-80">Atraso total: {delayDays}d</span>}
                             </div>
-                            {pop.pdfUrl && <a href={pop.pdfUrl} download={pop.pdfName} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 text-red-900 bg-red-50 hover:bg-red-100 px-3 py-1 rounded-full text-xs font-bold transition-colors border border-red-200" title={pop.pdfName}><Download size={14} /> PDF</a>}
                             
-                            <button onClick={(e) => { e.stopPropagation(); deletePop(pop.id); }} className="text-slate-400 hover:text-red-600 transition-colors"><Trash2 size={18} /></button>
-                            <div className="text-slate-400">{isExpanded ? <ChevronUp size={20}/> : <ChevronDown size={20}/>}</div>
+                            <div className="flex items-center gap-2" data-html2canvas-ignore>
+                                {pop.pdfUrl && <a href={pop.pdfUrl} download={pop.pdfName} onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 text-red-900 bg-red-50 hover:bg-red-100 px-3 py-1 rounded-full text-xs font-bold transition-colors border border-red-200" title={pop.pdfName}><Download size={14} /> PDF</a>}
+                                <button onClick={(e) => { e.stopPropagation(); deletePop(pop.id); }} className="text-slate-400 hover:text-red-600 transition-colors"><Trash2 size={18} /></button>
+                            </div>
+                            <div className="text-slate-400" data-html2canvas-ignore>{isExpanded ? <ChevronUp size={20}/> : <ChevronDown size={20}/>}</div>
                         </div>
                     </div>
 
                     {isExpanded && (
-                    <div className="p-5 grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fade-in border-t border-slate-100">
+                    <div className="p-5 grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fade-in border-t border-slate-100 bg-white">
                         <div className="lg:col-span-4 space-y-4 border-r border-slate-100 pr-4">
-                            
-                            {/* Chips Visuais */}
                             <div className="flex flex-wrap gap-2 mb-2">
                                 <div className={`text-[10px] px-2 py-1 rounded border font-semibold ${pop.politica === 'Sim' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>Política: {pop.politica}</div>
                                 <div className={`text-[10px] px-2 py-1 rounded border font-semibold ${pop.manuais === 'Sim' ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>Manuais: {pop.manuais}</div>
@@ -364,7 +524,7 @@
                                 <div className="mt-4 relative">
                                     <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2"><TrendingUp size={14} /> Evolução Acumulada das Fases</h4>
                                     <div className="relative w-full pb-[35%]">
-                                        <svg viewBox="0 0 100 50" className="absolute inset-0 w-full h-full overflow-visible">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50" className="absolute inset-0 w-full h-full overflow-visible">
                                             <line x1="0" y1="50" x2="100" y2="50" stroke="#e2e8f0" strokeWidth="0.5" />
                                             <path d={pathPlan} fill="none" stroke="#3b82f6" strokeWidth="1" strokeDasharray="2 1" className="path-anim" style={{opacity: 0.6}} />
                                             <path d={pathExec} fill="none" stroke={isOverallOnTime ? "#10b981" : "#ef4444"} strokeWidth="1.2" className="path-anim" />
@@ -393,18 +553,11 @@
                 );
             };
 
+            const stats = getDashboardStats(filteredPops);
+
             const renderDashboard = () => {
-                const filteredPops = pops.filter(pop => {
-                    const popDate = new Date(pop.dataInicio);
-                    const matchMonth = filterMonth === 'todos' || (popDate.getMonth() + 1) === parseInt(filterMonth);
-                    const matchYear = filterYear === 'todos' || popDate.getFullYear() === parseInt(filterYear);
-                    return matchMonth && matchYear;
-                });
-
-                const stats = getDashboardStats(filteredPops);
-
                 return (
-                    <div className="animate-fade-in">
+                    <div className="animate-fade-in pb-10">
                         <style>{`
                             @keyframes slideUpFade { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
                             @keyframes popIn { 0% { opacity: 0; transform: scale(0.8); } 70% { transform: scale(1.05); } 100% { opacity: 1; transform: scale(1); } }
@@ -433,55 +586,42 @@
                                     {Array.from({length: 5}, (_, i) => new Date().getFullYear() - 2 + i).map(y => (<option key={y} value={y}>{y}</option>))}
                                 </select>
                             </div>
-                            <div className="text-sm text-slate-500 ml-auto font-medium">Exibindo dados de <strong className="text-red-900">{filteredPops.length}</strong> processo(s)</div>
+                            <div className="text-sm text-slate-500 ml-auto font-medium flex items-center gap-4">
+                                <span>Exibindo dados de <strong className="text-red-900">{filteredPops.length}</strong> processo(s)</span>
+                                
+                                {/* BOTÃO APRESENTAÇÃO */}
+                                <button 
+                                    onClick={() => { setPresentationMode(true); setCurrentSlide(0); }} 
+                                    disabled={filteredPops.length === 0}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold transition-all text-sm shadow-md ${filteredPops.length === 0 ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg'}`}
+                                >
+                                    <Play size={16} /> Apresentar
+                                </button>
+
+                                {/* BOTÃO GERAR PDF */}
+                                <button 
+                                    onClick={handleExportPDF} 
+                                    disabled={isExporting || filteredPops.length === 0}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold transition-all text-sm shadow-md ${isExporting || filteredPops.length === 0 ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-red-900 text-white hover:bg-red-800 hover:shadow-lg'}`}
+                                >
+                                    {isExporting ? <Activity size={16} className="animate-spin" /> : <FileDown size={16} />}
+                                    {isExporting ? 'A exportar...' : 'Exportar PDF'}
+                                </button>
+                            </div>
                         </div>
 
                         {stats ? (
-                        <div className="bg-red-900 rounded-2xl p-6 text-white shadow-xl shadow-red-900/20 border border-red-800 anim-entry delay-200 transition-all hover:shadow-2xl">
-                            <h2 className="text-xl font-bold mb-6 flex items-center gap-2">Resumo do Período</h2>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                <div className="bg-white p-4 rounded-xl border-l-4 border-red-800 shadow-sm anim-pop delay-300 transform hover:-translate-y-1 transition-transform duration-300">
-                                    <p className="text-red-900/70 text-xs uppercase font-bold tracking-wider">Total de POPs</p>
-                                    <p className="text-3xl font-bold mt-1 text-red-900">{stats.totalPops}</p>
-                                </div>
-                                <div className="bg-white p-4 rounded-xl border-l-4 border-red-800 shadow-sm anim-pop delay-400 transform hover:-translate-y-1 transition-transform duration-300">
-                                    <p className="text-red-900/70 text-xs uppercase font-bold tracking-wider">% Dentro do Prazo</p>
-                                    <p className={`text-3xl font-bold mt-1 ${stats.onTimePercentage < 70 ? 'text-red-600' : 'text-emerald-600'}`}>{stats.onTimePercentage.toFixed(0)}%</p>
-                                </div>
-                                <div className="bg-white p-4 rounded-xl border-l-4 border-red-800 shadow-sm anim-pop delay-500 transform hover:-translate-y-1 transition-transform duration-300">
-                                    <p className="text-red-900/70 text-xs uppercase font-bold tracking-wider">Ciclo Médio (Dias)</p>
-                                    <p className="text-3xl font-bold mt-1 text-red-900">{stats.avgCycleTime.toFixed(1)}</p>
-                                </div>
-                                <div className="bg-white p-4 rounded-xl border-l-4 border-red-800 shadow-sm anim-pop delay-600 transform hover:-translate-y-1 transition-transform duration-300">
-                                    <p className="text-red-900/70 text-xs uppercase font-bold tracking-wider">Maior Gargalo</p>
-                                    <p className="text-lg font-bold mt-2 text-red-600 flex items-center gap-1"><AlertTriangle size={16}/> {stats.biggestBottleneck}</p>
-                                </div>
-                            </div>
-                            
-                            <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="bg-red-950/50 p-4 rounded-xl border border-red-800/50 anim-entry delay-500 hover:bg-red-950/70 transition-colors">
-                                    <h3 className="text-sm font-bold uppercase text-red-200 mb-3 flex items-center gap-2"><Award size={16}/> Processo Mais Ágil</h3>
-                                    {stats.bestPop ? (
-                                        <div>
-                                            <p className="text-lg font-bold">{stats.bestPop.titulo}</p>
-                                            <p className="text-xs text-red-200 mt-1 flex items-center gap-1"><CheckCircle size={12}/> Concluído em <strong className="text-white">{stats.bestPop.totalExecutado}</strong> dias</p>
-                                        </div>
-                                    ) : <p className="text-sm text-red-300">Nenhum POP concluído a 100%.</p>}
-                                </div>
-                                <div className="bg-red-950/50 p-4 rounded-xl border border-red-800/50 anim-entry delay-600 hover:bg-red-950/70 transition-colors">
-                                    <h3 className="text-sm font-bold uppercase text-red-200 mb-3 flex items-center gap-2"><AlertTriangle size={16}/> Top Atrasos por Depto</h3>
-                                    {stats.rankedDepts.length > 0 ? (
-                                        <ul className="text-sm space-y-2">
-                                            {stats.rankedDepts.slice(0,3).map((d, i) => (
-                                                <li key={i} className="flex justify-between items-center bg-red-900/30 p-2 rounded-lg">
-                                                    <span>{d.name}</span> <span className="font-bold bg-red-600 px-2 py-0.5 rounded text-xs">{d.count} atrasos</span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    ) : <p className="text-sm text-red-300">Sem atrasos registrados.</p>}
-                                </div>
-                            </div>
+                        <div id="dashboard-export-area">
+                            {/* Area 1: Resumo do Período */}
+                            {renderSummaryStats(stats)}
 
+                            {/* Area 2: Lista dos POPs Filtrados Expandidos */}
+                            <div className="mt-8 pt-4">
+                                <h3 className="text-lg font-bold text-slate-700 mb-4 px-2">Detalhamento dos Processos no Período</h3>
+                                <div className="grid grid-cols-1 gap-6">
+                                    {filteredPops.map(pop => <DiagnosticCard key={pop.id} pop={pop} defaultExpanded={true} />)}
+                                </div>
+                            </div>
                         </div>
                         ) : (
                             <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-300 anim-entry delay-200">
@@ -511,7 +651,7 @@
                     </div>
                     </div>
                 </header>
-                <main className="max-w-6xl mx-auto p-6">
+                <main className="max-w-6xl mx-auto p-6 relative">
                     {viewMode === 'form' && (
                     <div className="bg-white rounded-2xl shadow-xl p-8 max-w-4xl mx-auto animation-fade-in border-t-4 border-red-900">
                         <h2 className="text-2xl font-bold mb-6 text-slate-800 flex items-center gap-2 border-b pb-4"><FileText className="text-red-900" /> Cadastro de Processo (SLA)</h2>
@@ -542,7 +682,6 @@
                         <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
                             <h3 className="text-lg font-semibold mb-6 text-slate-700 flex items-center gap-2 border-b pb-2"><Activity size={18} className="text-red-900"/> Detalhamento das 5 Fases</h3>
                             
-                            {/* Renderização dinâmica das Fases no form para manter o código DRY */}
                             {[
                                 { title: 'Levantamento e Diagnóstico (15%)', num: 1 },
                                 { title: 'Desenho do Processo (20%)', num: 2 },
@@ -613,6 +752,79 @@
                     </div>
                     )}
                 </main>
+
+                {/* OVERLAY DO MODO APRESENTAÇÃO */}
+                {presentationMode && (
+                    <div className="fixed inset-0 z-[100] bg-slate-900 text-slate-100 flex flex-col overflow-hidden animate-fade-in">
+                        {/* Header Minimalista */}
+                        <div className="flex justify-between items-center px-6 py-4 border-b border-slate-800 bg-slate-950">
+                            <div className="flex items-center gap-3 font-bold text-lg">
+                                <Maximize2 className="text-blue-500" size={20}/> 
+                                <span>Apresentação de Resultados</span>
+                                <span className="text-slate-500 text-sm font-normal ml-4">
+                                    {filterMonth !== 'todos' ? `Filtro: Mês ${filterMonth}/${filterYear}` : 'Filtro: Todos os Períodos'}
+                                </span>
+                            </div>
+                            <button onClick={() => setPresentationMode(false)} className="p-2 hover:bg-slate-800 rounded-full transition-colors flex items-center gap-2 text-slate-400 hover:text-white">
+                                <span className="text-xs font-semibold">ESC para fechar</span> <X size={24}/>
+                            </button>
+                        </div>
+                        
+                        {/* Área Principal do Slide */}
+                        <div className="flex-1 relative flex items-center justify-center p-6 md:p-12 overflow-y-auto">
+                            
+                            {/* Botão Retroceder */}
+                            <button 
+                                onClick={() => setCurrentSlide(prev => prev - 1)} 
+                                disabled={currentSlide === 0}
+                                className="absolute left-4 md:left-8 z-10 p-4 rounded-full bg-slate-800/80 text-white hover:bg-slate-700 disabled:opacity-0 disabled:cursor-not-allowed transition-all shadow-xl"
+                            >
+                                <ChevronLeft size={36}/>
+                            </button>
+
+                            {/* Conteúdo do Slide com FORÇA de re-renderização através da KEY */}
+                            <div className="w-full max-w-5xl" key={`slide-${currentSlide}`}>
+                                {currentSlide === 0 ? (
+                                    <div className="animate-fade-in transform scale-100 md:scale-105">
+                                        {/* Slide 0: Resumo Geral */}
+                                        <h2 className="text-center text-3xl font-bold mb-8 text-white tracking-wide">Visão Geral Consolidada</h2>
+                                        {renderSummaryStats(stats, true)}
+                                    </div>
+                                ) : (
+                                    <div className="animate-fade-in transform scale-100 md:scale-105">
+                                        {/* Slides N: Detalhamento por POP */}
+                                        <h2 className="text-center text-xl font-bold mb-6 text-slate-400 uppercase tracking-widest">
+                                            Processo {currentSlide} de {filteredPops.length}
+                                        </h2>
+                                        {/* A key única garante que o DiagnosticCard monte de raiz e rode as animações do zero! */}
+                                        <DiagnosticCard key={`diag-slide-${filteredPops[currentSlide - 1].id}`} pop={filteredPops[currentSlide - 1]} defaultExpanded={true} />
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Botão Avançar */}
+                            <button 
+                                onClick={() => setCurrentSlide(prev => prev + 1)} 
+                                disabled={currentSlide === filteredPops.length}
+                                className="absolute right-4 md:right-8 z-10 p-4 rounded-full bg-blue-600/90 text-white hover:bg-blue-500 disabled:opacity-0 disabled:cursor-not-allowed transition-all shadow-xl"
+                            >
+                                <ChevronRight size={36}/>
+                            </button>
+                        </div>
+                        
+                        {/* Rodapé / Progresso */}
+                        <div className="p-6 bg-slate-950 border-t border-slate-800 flex justify-center items-center gap-3">
+                            {Array.from({length: filteredPops.length + 1}).map((_, i) => (
+                                <div 
+                                    key={`dot-${i}`} 
+                                    onClick={() => setCurrentSlide(i)}
+                                    title={i === 0 ? 'Resumo' : `Processo ${i}`}
+                                    className={`h-2 rounded-full transition-all duration-500 cursor-pointer ${i === currentSlide ? 'w-10 bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.8)]' : 'w-3 bg-slate-700 hover:bg-slate-500'}`} 
+                                ></div>
+                            ))}
+                        </div>
+                    </div>
+                )}
                 </div>
             );
         };
