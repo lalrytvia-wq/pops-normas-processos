@@ -755,49 +755,51 @@
 
                 {/* OVERLAY DO MODO APRESENTAÇÃO */}
                 {presentationMode && (
-                    <div className="fixed inset-0 z-[100] bg-slate-900 text-slate-100 flex flex-col overflow-hidden animate-fade-in">
-                        {/* Header Minimalista */}
-                        <div className="flex justify-between items-center px-6 py-4 border-b border-slate-800 bg-slate-950">
+                    <div className="fixed inset-0 z-[100] bg-slate-50 text-slate-800 flex flex-col overflow-hidden animate-fade-in">
+                        {/* Header Minimalista Claro */}
+                        <div className="flex justify-between items-center px-6 py-4 border-b border-slate-200 bg-white shadow-sm z-10">
                             <div className="flex items-center gap-3 font-bold text-lg">
-                                <Maximize2 className="text-blue-500" size={20}/> 
-                                <span>Apresentação de Resultados</span>
-                                <span className="text-slate-500 text-sm font-normal ml-4">
+                                <Maximize2 className="text-red-900" size={20}/> 
+                                <span className="text-slate-800">Apresentação de Resultados</span>
+                                <span className="text-slate-500 text-sm font-normal ml-4 border-l border-slate-300 pl-4">
                                     {filterMonth !== 'todos' ? `Filtro: Mês ${filterMonth}/${filterYear}` : 'Filtro: Todos os Períodos'}
                                 </span>
                             </div>
-                            <button onClick={() => setPresentationMode(false)} className="p-2 hover:bg-slate-800 rounded-full transition-colors flex items-center gap-2 text-slate-400 hover:text-white">
-                                <span className="text-xs font-semibold">ESC para fechar</span> <X size={24}/>
+                            <button onClick={() => setPresentationMode(false)} className="p-2 bg-slate-100 hover:bg-red-50 rounded-full transition-colors flex items-center gap-2 text-slate-500 hover:text-red-700">
+                                <span className="text-xs font-semibold">ESC para fechar</span> <X size={20}/>
                             </button>
                         </div>
                         
-                        {/* Área Principal do Slide */}
-                        <div className="flex-1 relative flex items-center justify-center p-6 md:p-12 overflow-y-auto">
+                        {/* Área Principal do Slide sem scroll (overflow-hidden) */}
+                        <div className="flex-1 relative flex items-center justify-center p-4 md:p-8 overflow-hidden">
                             
                             {/* Botão Retroceder */}
                             <button 
                                 onClick={() => setCurrentSlide(prev => prev - 1)} 
                                 disabled={currentSlide === 0}
-                                className="absolute left-4 md:left-8 z-10 p-4 rounded-full bg-slate-800/80 text-white hover:bg-slate-700 disabled:opacity-0 disabled:cursor-not-allowed transition-all shadow-xl"
+                                className="absolute left-2 md:left-6 z-10 p-3 md:p-4 rounded-full bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-0 disabled:cursor-not-allowed transition-all shadow-lg border border-slate-200"
                             >
-                                <ChevronLeft size={36}/>
+                                <ChevronLeft size={32}/>
                             </button>
 
-                            {/* Conteúdo do Slide com FORÇA de re-renderização através da KEY */}
-                            <div className="w-full max-w-5xl" key={`slide-${currentSlide}`}>
+                            {/* Conteúdo do Slide com FORÇA de re-renderização através da KEY e Redimensionamento (Scale) para evitar Scroll */}
+                            <div className="w-full max-w-5xl max-h-full flex flex-col justify-center items-center" key={`slide-${currentSlide}`}>
                                 {currentSlide === 0 ? (
-                                    <div className="animate-fade-in transform scale-100 md:scale-105">
+                                    <div className="animate-fade-in w-full transform scale-90 md:scale-100 origin-center transition-transform">
                                         {/* Slide 0: Resumo Geral */}
-                                        <h2 className="text-center text-3xl font-bold mb-8 text-white tracking-wide">Visão Geral Consolidada</h2>
+                                        <h2 className="text-center text-3xl font-bold mb-8 text-slate-800 tracking-wide">Visão Geral Consolidada</h2>
                                         {renderSummaryStats(stats, true)}
                                     </div>
                                 ) : (
-                                    <div className="animate-fade-in transform scale-100 md:scale-105">
+                                    <div className="animate-fade-in w-full transform scale-90 md:scale-95 origin-center transition-transform">
                                         {/* Slides N: Detalhamento por POP */}
-                                        <h2 className="text-center text-xl font-bold mb-6 text-slate-400 uppercase tracking-widest">
+                                        <h2 className="text-center text-xl font-bold mb-4 text-slate-500 uppercase tracking-widest">
                                             Processo {currentSlide} de {filteredPops.length}
                                         </h2>
                                         {/* A key única garante que o DiagnosticCard monte de raiz e rode as animações do zero! */}
-                                        <DiagnosticCard key={`diag-slide-${filteredPops[currentSlide - 1].id}`} pop={filteredPops[currentSlide - 1]} defaultExpanded={true} />
+                                        <div className="w-full relative">
+                                            <DiagnosticCard key={`diag-slide-${filteredPops[currentSlide - 1].id}`} pop={filteredPops[currentSlide - 1]} defaultExpanded={true} />
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -806,20 +808,20 @@
                             <button 
                                 onClick={() => setCurrentSlide(prev => prev + 1)} 
                                 disabled={currentSlide === filteredPops.length}
-                                className="absolute right-4 md:right-8 z-10 p-4 rounded-full bg-blue-600/90 text-white hover:bg-blue-500 disabled:opacity-0 disabled:cursor-not-allowed transition-all shadow-xl"
+                                className="absolute right-2 md:right-6 z-10 p-3 md:p-4 rounded-full bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-0 disabled:cursor-not-allowed transition-all shadow-lg border border-slate-200"
                             >
-                                <ChevronRight size={36}/>
+                                <ChevronRight size={32}/>
                             </button>
                         </div>
                         
-                        {/* Rodapé / Progresso */}
-                        <div className="p-6 bg-slate-950 border-t border-slate-800 flex justify-center items-center gap-3">
+                        {/* Rodapé / Progresso Claro */}
+                        <div className="p-4 bg-white border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] flex justify-center items-center gap-3 z-10">
                             {Array.from({length: filteredPops.length + 1}).map((_, i) => (
                                 <div 
                                     key={`dot-${i}`} 
                                     onClick={() => setCurrentSlide(i)}
                                     title={i === 0 ? 'Resumo' : `Processo ${i}`}
-                                    className={`h-2 rounded-full transition-all duration-500 cursor-pointer ${i === currentSlide ? 'w-10 bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.8)]' : 'w-3 bg-slate-700 hover:bg-slate-500'}`} 
+                                    className={`h-2.5 rounded-full transition-all duration-500 cursor-pointer ${i === currentSlide ? 'w-12 bg-red-900 shadow-md' : 'w-3 bg-slate-300 hover:bg-slate-400'}`} 
                                 ></div>
                             ))}
                         </div>
