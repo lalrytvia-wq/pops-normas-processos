@@ -130,8 +130,8 @@
             const [pops, setPops] = useState(mockPops);
             const [formData, setFormData] = useState(initialFormState);
             const [viewMode, setViewMode] = useState('list'); 
-            const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
-            const [filterYear, setFilterYear] = useState(new Date().getFullYear());
+            const [filterMonth, setFilterMonth] = useState('todos');
+            const [filterYear, setFilterYear] = useState('todos');
 
             const handleChange = (e) => {
                 const { name, value, files } = e.target;
@@ -396,8 +396,9 @@
             const renderDashboard = () => {
                 const filteredPops = pops.filter(pop => {
                     const popDate = new Date(pop.dataInicio);
-                    return (popDate.getMonth() + 1) === parseInt(filterMonth) && 
-                           popDate.getFullYear() === parseInt(filterYear);
+                    const matchMonth = filterMonth === 'todos' || (popDate.getMonth() + 1) === parseInt(filterMonth);
+                    const matchYear = filterYear === 'todos' || popDate.getFullYear() === parseInt(filterYear);
+                    return matchMonth && matchYear;
                 });
 
                 const stats = getDashboardStats(filteredPops);
@@ -422,11 +423,13 @@
                             <div className="flex items-center gap-2 text-slate-600 font-bold"><Filter size={18}/> Filtros:</div>
                             <div>
                                 <select value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} className="p-2 border border-slate-300 rounded-lg text-sm focus:border-red-900 outline-none hover:border-red-500 transition-colors">
+                                    <option value="todos">Todos os Meses</option>
                                     {Array.from({length: 12}, (_, i) => i + 1).map(m => (<option key={m} value={m}>{new Date(0, m-1).toLocaleString('pt-BR', {month: 'long'})}</option>))}
                                 </select>
                             </div>
                             <div>
                                 <select value={filterYear} onChange={(e) => setFilterYear(e.target.value)} className="p-2 border border-slate-300 rounded-lg text-sm focus:border-red-900 outline-none hover:border-red-500 transition-colors">
+                                    <option value="todos">Todos os Anos</option>
                                     {Array.from({length: 5}, (_, i) => new Date().getFullYear() - 2 + i).map(y => (<option key={y} value={y}>{y}</option>))}
                                 </select>
                             </div>
@@ -484,7 +487,7 @@
                             <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-300 anim-entry delay-200">
                                 <div className="bg-slate-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce"><Calendar size={32} className="text-slate-400" /></div>
                                 <h3 className="text-lg font-bold text-slate-600">Nenhum dado encontrado</h3>
-                                <p className="text-slate-500 mt-2">Não há processos registrados para {filterMonth}/{filterYear}.</p>
+                                <p className="text-slate-500 mt-2">Não há processos registrados para os filtros selecionados.</p>
                             </div>
                         )}
                     </div>
@@ -500,11 +503,11 @@
                         <div><h1 className="text-2xl font-bold tracking-tight">COMPLIANCE & PROCESSOS</h1><p className="text-red-200 text-sm">Gestor de Pops e normas interna</p></div>
                     </div>
                     <div className="flex gap-2">
+                        <button onClick={() => setViewMode('form')} className={`px-4 py-2 rounded-lg font-medium transition-colors ${viewMode === 'form' ? 'bg-red-800 text-white shadow-lg' : 'bg-red-900/50 text-red-100 hover:bg-red-800'}`}>+ Novo POP</button>
+                        <button onClick={() => setViewMode('list')} className={`px-4 py-2 rounded-lg font-medium transition-colors ${viewMode === 'list' ? 'bg-red-800 text-white shadow-lg' : 'bg-red-900/50 text-red-100 hover:bg-red-800'}`}>Processos</button>
                         <button onClick={() => setViewMode('dashboard')} className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${viewMode === 'dashboard' ? 'bg-red-800 text-white shadow-lg' : 'bg-red-900/50 text-red-100 hover:bg-red-800'}`}>
                             <BarChart2 size={18}/> Indicadores
                         </button>
-                        <button onClick={() => setViewMode('list')} className={`px-4 py-2 rounded-lg font-medium transition-colors ${viewMode === 'list' ? 'bg-red-800 text-white shadow-lg' : 'bg-red-900/50 text-red-100 hover:bg-red-800'}`}>Lista</button>
-                        <button onClick={() => setViewMode('form')} className={`px-4 py-2 rounded-lg font-medium transition-colors ${viewMode === 'form' ? 'bg-red-800 text-white shadow-lg' : 'bg-red-900/50 text-red-100 hover:bg-red-800'}`}>+ Novo POP</button>
                     </div>
                     </div>
                 </header>
